@@ -6,19 +6,23 @@
 #include "sokkelo.h"
 
 // sokkelo.cpp
+const bool DE = false;
 
 namespace otecpp_sokkelo {
 
   /* Lukee sokkeloruudukon syötevirrasta in */
-  Sokkelo::Sokkelo(std::istream& in) {
+  Sokkelo::Sokkelo(std::istream& in) : lev(0), kork(0) {
 
     this->suunta = OIK;
+    this->suuntahistoria.push(OIK);
 
     unsigned int r = 0; // rivi
     char line[100];
 
     while( in.getline(line, 100, '\n') ) {
       
+      this->kork += 1;
+
       // lisää tyhjä char-rivi sokkelon rakenteeseen
       this->sokkelo.push_back( std::vector<char>() );
       //std::cout << line << "\n";
@@ -33,6 +37,7 @@ namespace otecpp_sokkelo {
         if( c == 'X') {
           //std::cout << "Aloitussijainti x paikassa: " << r << "," << this->sokkelo.at(r).size()-1;
           this->liiku( std::make_pair(r, this->sokkelo.at(r).size()-1) );
+          this->lev += 1;
         }
 
       }
@@ -57,34 +62,41 @@ namespace otecpp_sokkelo {
     for(unsigned int kerta=0; kerta<x; ++kerta ) {
 
       sijainti_t uusi;
-      std::cout << "### ###\n\n";
+      if(DE) std::cout << "##############\n";
       // Yritä ensin oik.
-      //Yritys y = OIK_;
+
       if(getRuudunTyyppi(uusi=getUusiSijainti(OIK_)) == VAPAA) {
-        std::cout << "\t--> voitiin liikkua OIK \n";
+        if(DE) std::cout << "\t--> voitiin liikkua OIK \n";
       }
       else if(getRuudunTyyppi(uusi=getUusiSijainti(SUOR_)) == VAPAA) {
-        std::cout << "\t--> voitiin liikkua SUORAAN \n";
+        if(DE) std::cout << "\t--> voitiin liikkua SUORAAN \n";
       }
       else if(getRuudunTyyppi(uusi=getUusiSijainti(VAS_)) == VAPAA) {
-        std::cout << "\t--> voitiin liikkua VAS\n";
+        if(DE) std::cout << "\t--> voitiin liikkua VAS\n";
       } else {
         // Ei mahdollisia liikkumissuuntia. Peruuta
-        std::cout << "\t--> ei voitu liikkua...\n";
+        if(DE) std::cout << "\t--> ei voitu liikkua... Taaksepain\n";
 
         this->liikuTaaksepain();
-        return (this->pino().size() > 0); // Palauta true kun jatketaan
+        // Joss saavuttiin alkuun, palauta false
+        if (this->pino().size() == 0 || this->suunta == MUU) {
+          return false;
+        }
+        continue;
 
       }
 
-      // Lisää uusi sij. stakkiin
+      // Lisää uusi sij. stakkiin, vain jos normaali liike
       this->liiku( uusi ); // normaali liike
       
 
     }
 
+    // Tarkista aivan lopuksi jatketaanko suoritusta.
+    // Eli oliko ruutu johon päädyttiin, poispääsy
+    // palauta käänteinen, eli jos ei, true, eli jatketaan
+    return !this->onkoReunalla();
 
-    return true;
   }
 
   /*
@@ -104,31 +116,35 @@ namespace otecpp_sokkelo {
     }
 
     // Päivitä tulosuunta
-    std::cout << "liiku() :\n";
+    if(DE) std::cout << "liiku() :\n";
 
     const sijainti_t sijainti_ennen = this->pino().top();
 
-    std::cout << "vanha (" << sijainti_ennen.first << "," << sijainti_ennen.second << ")\n";  
-    std::cout << "uusi  (" << ruutu.first << "," << ruutu.second << ")\n";  
+    if(DE) std::cout << "vanha (" << sijainti_ennen.first << "," << sijainti_ennen.second << ")\n";  
+    if(DE) std::cout << "uusi  (" << ruutu.first << "," << ruutu.second << ")\n";  
 
     if( ruutu.first+1 == sijainti_ennen.first) {
       this->suunta = YLOS;
     }
-    if( ruutu.second-1 == sijainti_ennen.second ) {
+    else if( ruutu.second-1 == sijainti_ennen.second ) {
       this->suunta = OIK;
     }
-    if( ruutu.first-1 == sijainti_ennen.first ) {
+    else if( ruutu.first-1 == sijainti_ennen.first ) {
       this->suunta = ALAS;
     }
-    if(ruutu.second+1 == sijainti_ennen.second ) {
+    else if(ruutu.second+1 == sijainti_ennen.second ) {
       this->suunta = VAS;
     }
-    std::cout << "suunta on nyt " << this->suunta << std::endl;
+
+    // Työnnä uusi suunta historiaan
+    this->suuntahistoria.push(this->suunta);
+
+    if(DE) std::cout << "suunta on nyt " << this->suunta << std::endl;
     
     
 
     // Päivitä sokkelon kuvio käydyksi. <rivi, sarake> = 'x'
-    this->sokkelo.at(ruutu.first).at(ruutu.second) = X;
+    this->vaihdaRuutu(ruutu, X);
 
     // Lisää liike pinoon
     this->stakki.push( ruutu );
@@ -146,28 +162,36 @@ namespace otecpp_sokkelo {
   */
   Suunta Sokkelo::liikuTaaksepain() {
 
-    std::cout << "liikuTaaksepain()\n";
+    //std::cout << "liikuTaaksepain()\n";
 
     // Ei suoriteta jos pino on jo tyhjä
     if(this->pino().size() == 0) { return MUU; }
 
     // Merkitse nyk. sijainti käydyksi ruudukkoon
     const sijainti_t NYK = this->pino().top();
-    this->sokkelo.at(NYK.first).at(NYK.second) = KAYTY; // <rivi, sarake> = '*'    
+    this->vaihdaRuutu(NYK, KAYTY); // <rivi, sarake> = '*'    
 
     // Vaihda kulkusuunta
-    if(this->suunta == 0) { this->suunta = ALAS; }
-    else if(this->suunta == 1) { this->suunta = VAS; }
-    else if(this->suunta == 2) { this->suunta = YLOS; }
-    else if(this->suunta == 3) { this->suunta = OIK; }
+    this->suuntahistoria.pop();
+    const Suunta ed_suunta = this->suuntahistoria.top(); // eli ns. 2. uusin
+
+    if(ed_suunta == 0) { this->suunta = ALAS; }
+    else if(ed_suunta == 1) { this->suunta = VAS; }
+    else if(ed_suunta == 2) { this->suunta = YLOS; }
+    else if(ed_suunta == 3) { this->suunta = OIK; }
     else if(this->pino().size() == 1) { this->suunta = MUU; } // poiston jälkeen pino on tyhjä, eli alku. Silloin suunta on MUU
 
     // Poista lopuksi päällimmäinen alkio. 
     // Pino saattaa tyhjentyä. Tällöin suunta on MUU
     this->stakki.pop();
+    this->suuntahistoria.push(this->suunta);
+    
 
     // Lopuksi palauta uusi/nyk. kulksuunta
-    std::cout << "\t suunta painvastaiseen: " << this->suunta << std::endl;
+    //this->suuntahistoria.push(this->suunta); turha? hoituu yllä
+
+    if(DE) std::cout << "\t suunta painvastaiseen: " << this->suunta << std::endl;
+    if(DE) std::cout << "\t sijainti nyt: (" << this->stakki.top().first << "," << this->stakki.top().second << ")" << std::endl;
     return this->suunta;
 
   }
@@ -189,7 +213,7 @@ namespace otecpp_sokkelo {
     sijainti_t uusi;
     uusi.first = nyk.first; uusi.second = nyk.second; // alustetaan nyk. sijaintiin
 
-    std::cout << "---\nSuunta: " << this->suunta << " | Yritetaan: " << yritys << " @ (" << nyk.first << "," << nyk.second  << ")\n";
+    if(DE) std::cout << "---\nSuunta: " << this->suunta << " | Yritetaan: " << yritys << " @ (" << nyk.first << "," << nyk.second  << ")\n";
 
     // (1) Laske uusi sijanti suunnan mukaan (eli MIHIN SUUNTAAN OLLAAN MENOSSA)
     // Esim case 1 tarkoittaa että päädytään tähän ruutuun. If-lause kertoo vast. kombinaatiot
@@ -200,52 +224,62 @@ namespace otecpp_sokkelo {
 
     if( (SUUNTA == YLOS && yritys==VAS_) || (SUUNTA==VAS && yritys==SUOR_) || (SUUNTA==ALAS && yritys==OIK_))  {
       // rivi pysyy samana
-      std::cout << "case 1\n";
+      //std::cout << "case 1\n";
       uusi.second--; // vaakarivi yhden vas.
     }
     else if( (SUUNTA == VAS && yritys==VAS_) || (SUUNTA==ALAS && yritys==SUOR_) || (SUUNTA==OIK && yritys==OIK_) ) {
-      std::cout << "case 2\n";
+      //std::cout << "case 2\n";
       uusi.first++; // rivi kasvaa
     }
     else if( (SUUNTA == OIK && yritys==SUOR_) || (SUUNTA == YLOS && yritys==OIK_) || (SUUNTA==ALAS && yritys==VAS_) ) {
-      std::cout << "case 3\n";
+      //std::cout << "case 3\n";
       uusi.second++; // vaakarivi yhden oik.
     }
     else {
-      std::cout << "case 4, other\n";
+      //std::cout << "case 4, other\n";
       uusi.first--; // rivi ylös
     }
 
     // uusi kertoo siis mikä on oikea riippuen kulkusuunnasta.
     // Se ei välttämättä ole kuitenkaan laillinen ruutu!
     // Palauta sijainti pair: rivi, sarake
-    std::cout << "Uusi ruutu [voisi olla]: (" << uusi.first << "," << uusi.second << ")" << std::endl;
+    if(DE) std::cout << "Uusi ruutu [voisi olla]: (" << uusi.first << "," << uusi.second << ")" << std::endl;
     return uusi;
 
   }
 
-  // Getteri stackille.
+  bool Sokkelo::vaihdaRuutu(const sijainti_t& sijainti, const char uusi) {
+
+    char* vanha = &( this->sokkelo.at(sijainti.first).at(sijainti.second) );
+
+    if( *vanha == SEINA || (*vanha != X && uusi == KAYTY ) ) {
+      // epälaillinen
+      throw "Laiton merkin asetus";
+      return false;
+    }
+
+    *vanha = uusi; 
+    return true;
+
+  }
+
+  // Getteri stackille. Huomaa kopio (!)
   stakki_t Sokkelo::pino() const {
     return this->stakki;
   }
 
   // Onko X reunalla?
+  // Huomaa, että rivien ja sarakkeiden arvo on niiden lukumäärä
   bool Sokkelo::onkoReunalla() {
-    return false; // todo
+    const sijainti_t NYK = this->pino().top(); // nykyinen sijaintimme
+    return (NYK.first+1 == 1 || NYK.second+1 == 1 || NYK.first+1 == this->kork || NYK.second+1 == this->lev);
   }
 
 
   char Sokkelo::getRuudunTyyppi( const sijainti_t& sijainti ) {
 
-    try {
-      
-      // rivi, sarake
-      return (char) this->sokkelo.at(sijainti.first).at(sijainti.second);
-
-    } catch(...) {
-      return '0';
-    }
-
+    // rivi, sarake
+    return (char) this->sokkelo.at(sijainti.first).at(sijainti.second);
   }
 
   // On luokan Sokkelo ystävä

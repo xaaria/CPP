@@ -14,10 +14,17 @@ int main() {
   ifstream td("sokkelo.txt");
   Sokkelo s(td);
 
-  cout << s << '\n';
+  for(int i=0; i<=200; ++i) {
+    
+    bool x = s.askella( 1 );
+    //cout << "askella palautti " << x << endl;
+    cout << s << '\n';
+    if(!x) {
+      //cout << "Ulkona!\n";
+      break;
+    } 
+  }
+ 
 
-  s.askella( 30 );
-
-  cout << s << '\n';
 
 }

@@ -46,10 +46,16 @@ namespace otecpp_sokkelo {
       friend std::ostream& operator << (std::ostream& out, const Sokkelo& s);
 
     private:
+
+      // Dimensiot. Alusta nollaksi
+      unsigned short lev;
+      unsigned short kork;
+
       stakki_t  stakki;
       sokkelo_t sokkelo;
 
       Suunta suunta;
+      std::stack<Suunta> suuntahistoria; // pino, jossa tallessa suuntahistoria
 
       // Käy läpi nykyisen sij. suhteen 1. vapaan SUUNNAN (tarkistaa ensin oikean, jne...)
       char getMahdollinenSuunta();
@@ -61,6 +67,9 @@ namespace otecpp_sokkelo {
 
       // Palauttaa paikan <rivi, sarake> merkin charina
       char getRuudunTyyppi( const sijainti_t& sijainti );
+
+      // Vaihtaa sijainnin merkin. Boolean sijoituksen laillisuudesta.
+      bool vaihdaRuutu(const sijainti_t& sijainti, const char uusi);
 
   };
 
