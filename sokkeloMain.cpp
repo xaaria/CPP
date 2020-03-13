@@ -16,6 +16,8 @@ int main() {
 
   cout << s << '\n';
 
-  s.askella( 1 );
+  s.askella( 30 );
+
+  cout << s << '\n';
 
 }

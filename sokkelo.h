@@ -10,13 +10,14 @@ namespace otecpp_sokkelo {
 
   const char SEINA = '#';
   const char VAPAA = ' ';
-  const char X     = 'x'; // ruutu jossa on käyty (myös jossa ollaan parasta aikaa)
+  const char X     = 'x'; // ruutu jossa on käyty (myös jossa ollaan parasta aikaa). HUOM! tiedostoa lukiessa merkki on iso 'X'
+  const char KAYTY = '*'; // ruudut, joissa on jo käyty, mutta jotka eivät ole nykyruudun ja lähtöruudun välisellä polulla
 
   // Pino, jossa koordinaattipareja. Muotoa <RIVI, SARAKE>. Alkaa 0:sta
   typedef std::pair<unsigned int, unsigned int>     sijainti_t;
   typedef std::stack<sijainti_t>                    stakki_t; 
   typedef std::vector< std::vector<char> >          sokkelo_t; 
-  enum Suunta { YLOS, OIK, ALAS, VAS, MUU }; // 0,1,2,3
+  enum Suunta { YLOS, OIK, ALAS, VAS, MUU }; // Kulkusuunta. 0,1,2,3
   enum Yritys { OIK_, SUOR_, VAS_ };
 
   class Sokkelo {
@@ -24,10 +25,19 @@ namespace otecpp_sokkelo {
     public:
       Sokkelo(std::istream& in);
 
-      bool askella(unsigned int x);
-
       // Getteri stackille.
       stakki_t pino() const;
+
+      bool askella(unsigned int x);
+
+      // Lisää liikkeen pinoon ja päivittää this.sokkelon jotta piirto onnistuu, sekä muuttaa kulkusuunnan
+      // Liikkeen oletetaan olevan oikeellinen(!)
+      // -- Eli ei seinää ja käymätön
+      void liiku(const sijainti_t& uusi_sijainti);
+
+      // Peruu viimeisimmän liikkeen, eli liikepinon päällimmäisen, ja muuttaa kulkusuunnan
+      Suunta liikuTaaksepain();
+      
 
       bool onkoReunalla();
 
@@ -46,9 +56,8 @@ namespace otecpp_sokkelo {
 
       // Palauttavat sijainti-parin nyk. haluttuun suuntaan nyk. sijainnista
       // Saa parametriksi sen suunnan mihin ollaan yrittämässä
+      // Saatu sijainti_t EI OLE automaattisesti kelpaava, vaan laskennallinen ehdotus
       sijainti_t getUusiSijainti(const Yritys yritys);
-      //sijainti_t getSuora();
-      //sijainti_t getVasen();
 
       // Palauttaa paikan <rivi, sarake> merkin charina
       char getRuudunTyyppi( const sijainti_t& sijainti );
