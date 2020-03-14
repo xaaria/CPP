@@ -10,6 +10,7 @@ namespace otecpp_sokkelo {
 
   const char SEINA = '#';
   const char VAPAA = ' ';
+  const char SIJ   = 'X'; // Nykyistä sijaintia merkkaava merkki
   const char X     = 'x'; // ruutu jossa on käyty (myös jossa ollaan parasta aikaa). HUOM! tiedostoa lukiessa merkki on iso 'X'
   const char KAYTY = '*'; // ruudut, joissa on jo käyty, mutta jotka eivät ole nykyruudun ja lähtöruudun välisellä polulla
 

@@ -31,12 +31,12 @@ namespace otecpp_sokkelo {
       char c;
 
       while(ss >> c) {
-        this->sokkelo.at(r).push_back( tolower(c) ); 
+        this->sokkelo.at(r).push_back( c ); 
 
         // Aseta pinoon alkuruudun rivi ja sarake. voidaan olettaa että vain yksi alkusij. ('X')
-        if( c == 'X') {
-          //std::cout << "Aloitussijainti x paikassa: " << r << "," << this->sokkelo.at(r).size()-1;
-          this->liiku( std::make_pair(r, this->sokkelo.at(r).size()-1) );
+        if( c == SIJ) {
+          //std::cout << "Aloitussijainti 'X' paikassa: " << r << "," << this->sokkelo.at(r).size()-1;
+          this->liiku( std::make_pair(r, this->sokkelo.at(r).size()-1) ); // sen hetkisen koon mukaan!
           this->lev += 1;
         }
 
@@ -75,13 +75,17 @@ namespace otecpp_sokkelo {
         if(DE) std::cout << "\t--> voitiin liikkua VAS\n";
       } else {
         // Ei mahdollisia liikkumissuuntia. Peruuta
-        if(DE) std::cout << "\t--> ei voitu liikkua... Taaksepain\n";
+        //if(DE) 
+        std::cout << "\t--> ei voitu liikkua... Taaksepain\n";
 
         this->liikuTaaksepain();
+
         // Joss saavuttiin alkuun, palauta false
-        if (this->pino().size() == 0 || this->suunta == MUU) {
+        if (this->pino().size() == 0) { // || this->suunta == MUU) {
           return false;
         }
+
+        // liikuttiin taaksepäin ilman että pino on tyhjä (= ei ulospääsyä)
         continue;
 
       }
@@ -144,7 +148,8 @@ namespace otecpp_sokkelo {
     
 
     // Päivitä sokkelon kuvio käydyksi. <rivi, sarake> = 'x'
-    this->vaihdaRuutu(ruutu, X);
+    this->vaihdaRuutu(sijainti_ennen, X);   // vanha sijainti 
+    this->vaihdaRuutu(ruutu, SIJ);          // uusi sijainti
 
     // Lisää liike pinoon
     this->stakki.push( ruutu );
@@ -171,22 +176,41 @@ namespace otecpp_sokkelo {
     const sijainti_t NYK = this->pino().top();
     this->vaihdaRuutu(NYK, KAYTY); // <rivi, sarake> = '*'    
 
-    // Vaihda kulkusuunta
-    this->suuntahistoria.pop();
-    const Suunta ed_suunta = this->suuntahistoria.top(); // eli ns. 2. uusin
+    std::cout << *this;
 
-    if(ed_suunta == 0) { this->suunta = ALAS; }
-    else if(ed_suunta == 1) { this->suunta = VAS; }
-    else if(ed_suunta == 2) { this->suunta = YLOS; }
-    else if(ed_suunta == 3) { this->suunta = OIK; }
-    else if(this->pino().size() == 1) { this->suunta = MUU; } // poiston jälkeen pino on tyhjä, eli alku. Silloin suunta on MUU
+    // Vaihda kulkusuunta
+    std::cout << this->suuntahistoria.size();
+    this->suuntahistoria.pop();
+    try { 
+      const Suunta ed_suunta = this->suuntahistoria.top(); // eli ns. 2. uusin
+
+      if(ed_suunta == 0) { this->suunta = ALAS; }
+      else if(ed_suunta == 1) { this->suunta = VAS; }
+      else if(ed_suunta == 2) { this->suunta = YLOS; }
+      else if(ed_suunta == 3) { this->suunta = OIK; }
+      //else if(this->pino().size() <= 1) { this->suunta = MUU; } // poiston jälkeen pino on tyhjä, eli alku. Silloin suunta on MUU
+    
+    } catch(...) {
+      // Suuntahistoria tyhjeni
+      std::cout << "tyhjeni!";
+      this->suunta = MUU;
+    }
+
 
     // Poista lopuksi päällimmäinen alkio. 
     // Pino saattaa tyhjentyä. Tällöin suunta on MUU
+    std::cout << "pop. pinon koko on nyt: " << this->stakki.size();
     this->stakki.pop();
-    this->suuntahistoria.push(this->suunta);
-    
 
+    
+    //_this->suuntahistoria.push(this->suunta);
+    
+    // Poppaus tehty, sitten päivitä uusi päällimmäinen nykyiseksi ruuduksi, eli vanha x -> X:ksi
+    try {
+      this->vaihdaRuutu(this->stakki.top(), SIJ); // xxxX --> xxX*
+    } catch(...) {
+      std::cout << "pino tyhjä!";
+    }
     // Lopuksi palauta uusi/nyk. kulksuunta
     //this->suuntahistoria.push(this->suunta); turha? hoituu yllä
 
@@ -250,16 +274,28 @@ namespace otecpp_sokkelo {
 
   bool Sokkelo::vaihdaRuutu(const sijainti_t& sijainti, const char uusi) {
 
+    // Hae pointteri ruutuun
     char* vanha = &( this->sokkelo.at(sijainti.first).at(sijainti.second) );
-
-    if( *vanha == SEINA || (*vanha != X && uusi == KAYTY ) ) {
-      // epälaillinen
-      throw "Laiton merkin asetus";
-      return false;
-    }
 
     *vanha = uusi; 
     return true;
+
+    // Jos epälaillinen sijoitus
+    // Epäsallittuja ovat
+    // -- Seinän korvaaminen
+    // -- Käydyksi korvaaminen kun jokin muu kuin nyk. sijainti X
+    /*if(*vanha == VAPAA || (*vanha == X && uusi == SIJ) || (*vanha == SIJ && uusi == KAYTY) || (*vanha == SIJ && uusi == X)) {
+      *vanha = uusi; 
+      return true;
+
+    } else {
+      std::cout << "Laiton! " << *vanha << "-->" << uusi << std::endl;
+      //throw "Laiton merkin asetus";
+      return false;
+    }
+    */
+
+    
 
   }
 
