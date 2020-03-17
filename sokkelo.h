@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <stack>
 #include <vector>
 #include <utility> /* pair */
@@ -18,7 +19,7 @@ namespace otecpp_sokkelo {
   typedef std::pair<unsigned int, unsigned int>     sijainti_t;
   typedef std::stack<sijainti_t>                    stakki_t; 
   typedef std::vector< std::vector<char> >          sokkelo_t; 
-  enum Suunta { YLOS, OIK, ALAS, VAS, MUU }; // Kulkusuunta. 0,1,2,3
+  enum Suunta { YLOS, OIK, ALAS, VAS, EI_MIKAAN }; // Kulkusuunta. 0,1,2,3
   enum Yritys { OIK_, SUOR_, VAS_ };
 
   class Sokkelo {
@@ -34,13 +35,13 @@ namespace otecpp_sokkelo {
       // Lis‰‰ liikkeen pinoon ja p‰ivitt‰‰ this.sokkelon jotta piirto onnistuu, sek‰ muuttaa kulkusuunnan
       // Liikkeen oletetaan olevan oikeellinen(!)
       // -- Eli ei sein‰‰ ja k‰ym‰tˆn
-      void liiku(const sijainti_t& uusi_sijainti);
+      inline void liiku(const sijainti_t& uusi_sijainti);
 
       // Peruu viimeisimm‰n liikkeen, eli liikepinon p‰‰llimm‰isen, ja muuttaa kulkusuunnan
-      Suunta liikuTaaksepain();
+      inline Suunta liikuTaaksepain();
       
 
-      bool onkoReunalla();
+      inline bool onkoReunalla();
 
       // Yst‰v‰m‰‰ritys:
       // eli ett‰ ulkopuolisella vast. funk. on p‰‰sy param. yksityisiin j‰seniin
@@ -51,6 +52,8 @@ namespace otecpp_sokkelo {
       // Dimensiot. Alusta nollaksi
       unsigned short lev;
       unsigned short kork;
+
+      std::ofstream output;
 
       stakki_t  stakki;
       sokkelo_t sokkelo;
@@ -64,13 +67,13 @@ namespace otecpp_sokkelo {
       // Palauttavat sijainti-parin nyk. haluttuun suuntaan nyk. sijainnista
       // Saa parametriksi sen suunnan mihin ollaan yritt‰m‰ss‰
       // Saatu sijainti_t EI OLE automaattisesti kelpaava, vaan laskennallinen ehdotus
-      sijainti_t getUusiSijainti(const Yritys yritys);
+      inline sijainti_t getUusiSijainti(const Yritys yritys);
 
       // Palauttaa paikan <rivi, sarake> merkin charina
-      char getRuudunTyyppi( const sijainti_t& sijainti );
+      inline char getRuudunTyyppi( const sijainti_t& sijainti );
 
       // Vaihtaa sijainnin merkin. Boolean sijoituksen laillisuudesta.
-      bool vaihdaRuutu(const sijainti_t& sijainti, const char uusi);
+      inline bool vaihdaRuutu(const sijainti_t& sijainti, const char uusi);
 
   };
 

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <stack>
 #include <string>
 #include <sstream>
@@ -6,11 +7,12 @@
 #include "sokkelo.h"
 
 // sokkelo.cpp
-const bool DE = false;
+const bool DE     = 1;
+const bool OUTPUT = 1;
 
 namespace otecpp_sokkelo {
 
-  /* Lukee sokkeloruudukon syˆtevirrasta in */
+  /* Lukee sokkeloruudukon sy√∂tevirrasta in */
   Sokkelo::Sokkelo(std::istream& in) : lev(0), kork(0) {
 
     this->suunta = OIK;
@@ -19,21 +21,21 @@ namespace otecpp_sokkelo {
     unsigned int r = 0; // rivi
     char line[100];
 
-    while( in.getline(line, 100, '\n') ) {
+    while( in.getline(line, 60, '\n') ) {
       
       this->kork += 1;
 
-      // lis‰‰ tyhj‰ char-rivi sokkelon rakenteeseen
+      // lis√§√§ tyhj√§ char-rivi sokkelon rakenteeseen
       this->sokkelo.push_back( std::vector<char>() );
       //std::cout << line << "\n";
       std::stringstream ss(line);
-      ss << std::noskipws; // ‰l‰ skippaa valkomerkkej‰ (v‰lil.)
+      ss << std::noskipws; // √§l√§ skippaa valkomerkkej√§ (v√§lil.)
       char c;
 
       while(ss >> c) {
         this->sokkelo.at(r).push_back( c ); 
 
-        // Aseta pinoon alkuruudun rivi ja sarake. voidaan olettaa ett‰ vain yksi alkusij. ('X')
+        // Aseta pinoon alkuruudun rivi ja sarake. voidaan olettaa ett√§ vain yksi alkusij. ('X')
         if( c == SIJ) {
           //std::cout << "Aloitussijainti 'X' paikassa: " << r << "," << this->sokkelo.at(r).size()-1;
           this->liiku( std::make_pair(r, this->sokkelo.at(r).size()-1) ); // sen hetkisen koon mukaan!
@@ -41,16 +43,20 @@ namespace otecpp_sokkelo {
         }
 
       }
-      ++r; // kasvata rivi‰
+      ++r; // kasvata rivi√§
 
     }
+
+    // Debug/output-tiedosto
+    this->output.open("sokkelo_out.txt");
+    
 
   }
 
   /*
     Suorittaa liikkumisen [ohjeen kohdan 3] hakuaskeleen x kertaa (jos mahdollista).
-    Ruudun tulee olla tyypilt‰‰n VAPAA.
-    Eli palautetaan FALSE, jos joko lˆydettiin reitti ulos sokkelosta tai hakupino tuli tyhj‰ksi.
+    Ruudun tulee olla tyypilt√§√§n VAPAA.
+    Eli palautetaan FALSE, jos joko l√∂ydettiin reitti ulos sokkelosta tai hakupino tuli tyhj√§ksi.
     (eli ts., jatketaanko liikkumista)
   */
   bool Sokkelo::askella(unsigned int x) {
@@ -62,70 +68,73 @@ namespace otecpp_sokkelo {
     for(unsigned int kerta=0; kerta<x; ++kerta ) {
 
       sijainti_t uusi;
-      if(DE) std::cout << "##############\n";
-      // Yrit‰ ensin oik.
+      this->output << "~~[ askella() alkaa ]~~\n";
+      // Yrit√§ ensin oik.
 
       if(getRuudunTyyppi(uusi=getUusiSijainti(OIK_)) == VAPAA) {
-        if(DE) std::cout << "\t--> voitiin liikkua OIK \n";
+        this->output << "\t--> voitiin liikkua OIK \n";
       }
       else if(getRuudunTyyppi(uusi=getUusiSijainti(SUOR_)) == VAPAA) {
-        if(DE) std::cout << "\t--> voitiin liikkua SUORAAN \n";
+        this->output << "\t--> voitiin liikkua SUORAAN \n";
       }
       else if(getRuudunTyyppi(uusi=getUusiSijainti(VAS_)) == VAPAA) {
-        if(DE) std::cout << "\t--> voitiin liikkua VAS\n";
+        this->output << "\t--> voitiin liikkua VAS\n";
       } else {
         // Ei mahdollisia liikkumissuuntia. Peruuta
-        //if(DE) 
-        std::cout << "\t--> ei voitu liikkua... Taaksepain\n";
+        this->output << "\t--> ei voitu liikkua... Aloitetaan taaksepain liikkuminen...\n";
 
-        this->liikuTaaksepain();
-
-        // Joss saavuttiin alkuun, palauta false
-        if (this->pino().size() == 0) { // || this->suunta == MUU) {
+        // Joss pino tyhjenee, palauta false
+        if (this->liikuTaaksepain() == EI_MIKAAN || this->onkoReunalla()) {
+          this->output << "\tEi mahdollisia suuntia tai ollaan reunalla! Lopeta suoritus...\n";
           return false;
         }
 
-        // liikuttiin taaksep‰in ilman ett‰ pino on tyhj‰ (= ei ulosp‰‰sy‰)
+        // liikuttiin taaksep√§in ilman ett√§ pino on tyhj√§ (= ei ulosp√§√§sy√§)
+        if(OUTPUT) this->output << "Liikkeen j√§lkeen: \n" << *this << "\n\n";
         continue;
 
       }
 
-      // Lis‰‰ uusi sij. stakkiin, vain jos normaali liike
+      // Lis√§√§ uusi sij. stakkiin, vain jos normaali liike
+      
       this->liiku( uusi ); // normaali liike
+      if(OUTPUT) this->output << "Liikkeen j√§lkeen: \n" << *this << "\n";
       
 
     }
 
     // Tarkista aivan lopuksi jatketaanko suoritusta.
-    // Eli oliko ruutu johon p‰‰dyttiin, poisp‰‰sy
-    // palauta k‰‰nteinen, eli jos ei, true, eli jatketaan
-    return !this->onkoReunalla();
+    // Eli oliko ruutu johon p√§√§dyttiin, poisp√§√§sy
+    // palauta k√§√§nteinen, eli jos ei, true, eli jatketaan
+    bool lopeta = this->onkoReunalla();
+    this->output << "Katsotaan liikkeen lopuksi ollaanko reunalla: " << lopeta << "\n\n";
+    return !lopeta;
 
   }
 
   /*
-    Lis‰‰ oikeellisen ruudun uudeksi sijainniksi, p‰ivit‰‰
+    Lis√§√§ oikeellisen ruudun uudeksi sijainniksi, p√§ivit√§√§
     liike-pinon ja merkitsee sokkelo-vektoriin oikean merkin.
-    Muuttaa kulkusuunnan perustuen pinon p‰‰llimm‰iseen arvoon ja
+    Muuttaa kulkusuunnan perustuen pinon p√§√§llimm√§iseen arvoon ja
     uuden sij. mukaan.
   */
-  void Sokkelo::liiku(const sijainti_t& ruutu) {
+  inline void Sokkelo::liiku(const sijainti_t& ruutu) {
 
     // Triviaali tarkastus
-    // Aloitussijainnin lis‰ys ensimm‰iseksi.
+    // Aloitussijainnin lis√§ys ensimm√§iseksi.
     // Suunta asetetaan rakentimessa
     if(this->pino().size() == 0) {
       this->stakki.push( ruutu );
       return;
     }
 
-    // P‰ivit‰ tulosuunta
-    if(DE) std::cout << "liiku() :\n";
+    // P√§ivit√§ tulosuunta
+    this->output << "liiku() :\n";
 
     const sijainti_t sijainti_ennen = this->pino().top();
 
-    if(DE) std::cout << "vanha (" << sijainti_ennen.first << "," << sijainti_ennen.second << ")\n";  
-    if(DE) std::cout << "uusi  (" << ruutu.first << "," << ruutu.second << ")\n";  
+    this->output << "\tvanha (" << sijainti_ennen.first << "," << sijainti_ennen.second << ")\n";  
+    this->output << "\tuusi  (" << ruutu.first << "," << ruutu.second << ")\n";  
 
     if( ruutu.first+1 == sijainti_ennen.first) {
       this->suunta = YLOS;
@@ -140,111 +149,107 @@ namespace otecpp_sokkelo {
       this->suunta = VAS;
     }
 
-    // Tyˆnn‰ uusi suunta historiaan
+    // Ty√∂nn√§ uusi suunta historiaan
     this->suuntahistoria.push(this->suunta);
 
-    if(DE) std::cout << "suunta on nyt " << this->suunta << std::endl;
+    this->output << "suunta on nyt (0=ylos, 1=oik, ...): " << this->suunta << std::endl;
     
     
 
-    // P‰ivit‰ sokkelon kuvio k‰ydyksi. <rivi, sarake> = 'x'
+    // P√§ivit√§ sokkelon kuvio k√§ydyksi. <rivi, sarake> = 'x'
     this->vaihdaRuutu(sijainti_ennen, X);   // vanha sijainti 
     this->vaihdaRuutu(ruutu, SIJ);          // uusi sijainti
 
-    // Lis‰‰ liike pinoon
+    // Lis√§√§ liike pinoon
     this->stakki.push( ruutu );
 
   }
 
   /*
-    Jos liike-vaiheessa ei lˆytynyt vapaata ja toistaiseksi k‰ym‰tˆnt‰ ruutua, peruutetaan askel taaksep‰in: 
-      merkit‰‰n nykyruutu k‰ydyksi ja poistetaan pinon p‰‰llimm‰inen alkio.
+    Jos liike-vaiheessa ei l√∂ytynyt vapaata ja toistaiseksi k√§ym√§t√∂nt√§ ruutua, peruutetaan askel taaksep√§in: 
+      merkit√§√§n nykyruutu k√§ydyksi ja poistetaan pinon p√§√§llimm√§inen alkio.
 
-    Jos pino on tyhj‰, ei nykyruutua en‰‰ ole ja haku p‰‰ttyy tuloksettomana: sokkelosta ei lˆytynyt reitti‰ ulos.
-    Peruutuksen yhteydess‰ nykyinen kulkusuunta muuttuu aiempaa etenemissuuntaa p‰invastaiseksi.
+    Jos pino on tyhj√§, ei nykyruutua en√§√§ ole ja haku p√§√§ttyy tuloksettomana: sokkelosta ei l√∂ytynyt reitti√§ ulos.
+    Peruutuksen yhteydess√§ nykyinen kulkusuunta muuttuu aiempaa etenemissuuntaa p√§invastaiseksi.
 
     return: uusi (kulku)Suunta enum.
   */
-  Suunta Sokkelo::liikuTaaksepain() {
+  inline Suunta Sokkelo::liikuTaaksepain() {
 
-    //std::cout << "liikuTaaksepain()\n";
-
-    // Ei suoriteta jos pino on jo tyhj‰
-    if(this->pino().size() == 0) { return MUU; }
-
-    // Merkitse nyk. sijainti k‰ydyksi ruudukkoon
+    this->output << "liikuTaaksepain()\n";
+    // Merkitse nyk. sijainti k√§ydyksi ruudukkoon
     const sijainti_t NYK = this->pino().top();
     this->vaihdaRuutu(NYK, KAYTY); // <rivi, sarake> = '*'    
 
-    std::cout << *this;
+    //std::cout << *this;
 
-    // Vaihda kulkusuunta
-    std::cout << this->suuntahistoria.size();
-    this->suuntahistoria.pop();
-    try { 
-      const Suunta ed_suunta = this->suuntahistoria.top(); // eli ns. 2. uusin
-
-      if(ed_suunta == 0) { this->suunta = ALAS; }
-      else if(ed_suunta == 1) { this->suunta = VAS; }
-      else if(ed_suunta == 2) { this->suunta = YLOS; }
-      else if(ed_suunta == 3) { this->suunta = OIK; }
-      //else if(this->pino().size() <= 1) { this->suunta = MUU; } // poiston j‰lkeen pino on tyhj‰, eli alku. Silloin suunta on MUU
+  
+    // Poista lopuksi p√§√§llimm√§inen alkio. 
+    // "Jos pino on tyhj√§, ei nykyruutua en√§√§ ole ja haku p√§√§ttyy tuloksettomana: sokkelosta ei l√∂ytynyt reitti√§ ulos."
+    // -- Voidaan lopettaa metodi
+    //std::cout << "pop. pinon koko on nyt: " << this->stakki.size();
     
-    } catch(...) {
-      // Suuntahistoria tyhjeni
-      std::cout << "tyhjeni!";
-      this->suunta = MUU;
-    }
-
-
-    // Poista lopuksi p‰‰llimm‰inen alkio. 
-    // Pino saattaa tyhjenty‰. T‰llˆin suunta on MUU
-    std::cout << "pop. pinon koko on nyt: " << this->stakki.size();
     this->stakki.pop();
+    // Poista p√§√§llimm√§inen historiasta. Suunnan m√§√§ritys tehd√§√§n siis 2. edellisen mukaan.
+    //_this->suuntahistoria.pop();
 
-    
-    //_this->suuntahistoria.push(this->suunta);
-    
-    // Poppaus tehty, sitten p‰ivit‰ uusi p‰‰llimm‰inen nykyiseksi ruuduksi, eli vanha x -> X:ksi
-    try {
-      this->vaihdaRuutu(this->stakki.top(), SIJ); // xxxX --> xxX*
-    } catch(...) {
-      std::cout << "pino tyhj‰!";
+    if(this->stakki.size() == 0) {
+      this->output << "<Ei ulospaasya!>\n";
+      return EI_MIKAAN; // ei jatketa
     }
-    // Lopuksi palauta uusi/nyk. kulksuunta
-    //this->suuntahistoria.push(this->suunta); turha? hoituu yll‰
 
-    if(DE) std::cout << "\t suunta painvastaiseen: " << this->suunta << std::endl;
-    if(DE) std::cout << "\t sijainti nyt: (" << this->stakki.top().first << "," << this->stakki.top().second << ")" << std::endl;
+    // OSA 2 -- Jos l√∂ytyy mahdollisuuksia, jatka normaalisti 
+    // Peruutuksen yhteydess√§ nykyinen kulkusuunta muuttuu aiempaa etenemissuuntaa p√§invastaiseksi.
+    const Suunta ed_suunta = this->suuntahistoria.top(); // eli ns. 2. uusin
+    try { 
+      this->suuntahistoria.pop(); // siirretty top:n j‰lkeiseksi
+    } catch(...) { throw "Pinovirhe!"; }
+
+    if     (ed_suunta == YLOS) {  this->suunta = ALAS;  }
+    else if(ed_suunta == OIK) {   this->suunta = VAS;   }
+    else if(ed_suunta == ALAS) {  this->suunta = YLOS;  }
+    else if(ed_suunta == VAS) {   this->suunta = OIK;   }
+    else { throw "Suuntavirhe!"; }
+    
+    // Poppaus tehty, sitten p√§ivit√§ uusi p√§√§llimm√§inen nykyiseksi ruuduksi, eli vanha x -> X:ksi
+    this->vaihdaRuutu(this->stakki.top(), SIJ); // x x x X --> x x X *
+    
+    // Lopuksi tulostele tietoja & palauta "uusi" (=nyk.) kulkusuunta
+    this->output << "\t suunta painvastaiseen: " << this->suunta << std::endl;
+    this->output << "\t sijainti nyt: (" << this->stakki.top().first << "," << this->stakki.top().second << ")" << std::endl;
+    
     return this->suunta;
 
   }
 
 
   /*
-    Nykyist‰ sijaintia apuana k‰ytt‰en, palauttaa
-    ensimm‰isen mahdollisen SUUNNAN (charina) johon voidaan liikkua.
+    Nykyist√§ sijaintia apuana k√§ytt√§en, palauttaa
+    ensimm√§isen mahdollisen SUUNNAN (charina) johon voidaan liikkua.
     
     Ensisijaiesti tarkastetaan: oikea, suoraan ja vasemmalle.
-    Param. yritys kertoo mihin suuntaan yritet‰‰n
+    Param. yritys kertoo mihin suuntaan yritet√§√§n
   */
-  sijainti_t Sokkelo::getUusiSijainti(const Yritys yritys) {
+  inline sijainti_t Sokkelo::getUusiSijainti(const Yritys yritys) {
 
-    
+    if(this->onkoReunalla()) {
+      throw "Suorituksen olisi jo pit‰nyt p‰‰tty‰! Ollaan reunalla!";
+    }
+
     const short SUUNTA     = this->suunta; // nykyinen MENO_suunta
-    const sijainti_t nyk  = this->pino().top();
+    const sijainti_t nyk   = this->pino().top();
 
     sijainti_t uusi;
     uusi.first = nyk.first; uusi.second = nyk.second; // alustetaan nyk. sijaintiin
 
-    if(DE) std::cout << "---\nSuunta: " << this->suunta << " | Yritetaan: " << yritys << " @ (" << nyk.first << "," << nyk.second  << ")\n";
+    this->output << "---\nSuunta: [0=ylos, 1=oik.,] " << this->suunta << " | Yritetaan: [0=oikealle, 1=suoraan, 2=vas.] " << yritys << " @ (" << nyk.first << "," << nyk.second  << ")\n";
 
     // (1) Laske uusi sijanti suunnan mukaan (eli MIHIN SUUNTAAN OLLAAN MENOSSA)
-    // Esim case 1 tarkoittaa ett‰ p‰‰dyt‰‰n t‰h‰n ruutuun. If-lause kertoo vast. kombinaatiot
+    // Esim case 1 tarkoittaa ett√§ p√§√§dyt√§√§n t√§h√§n ruutuun. If-lause kertoo vast. kombinaatiot
     //  [ ][4][ ]
     //  [1][x][3]
     //  [ ][2][ ]
-    // (2) Katso onko t‰m‰ uusi sijainti mahdollinen.
+    // (2) Katso onko t√§m√§ uusi sijainti mahdollinen.
 
     if( (SUUNTA == YLOS && yritys==VAS_) || (SUUNTA==VAS && yritys==SUOR_) || (SUUNTA==ALAS && yritys==OIK_))  {
       // rivi pysyy samana
@@ -259,44 +264,33 @@ namespace otecpp_sokkelo {
       //std::cout << "case 3\n";
       uusi.second++; // vaakarivi yhden oik.
     }
-    else {
+    else if( (SUUNTA == YLOS && yritys==SUOR_) || (SUUNTA == OIK && yritys==VAS_) || (SUUNTA==VAS && yritys==OIK_) ) {
       //std::cout << "case 4, other\n";
-      uusi.first--; // rivi ylˆs
+      uusi.first--; // rivi yl√∂s
+    } else {
+      throw "Ei voitu m√§√§ritt√§√§ uutta ruutua!";
     }
 
-    // uusi kertoo siis mik‰ on oikea riippuen kulkusuunnasta.
-    // Se ei v‰ltt‰m‰tt‰ ole kuitenkaan laillinen ruutu!
+    // uusi kertoo siis mik√§ on oikea riippuen kulkusuunnasta.
+    // Se ei v√§ltt√§m√§tt√§ ole kuitenkaan laillinen ruutu!
     // Palauta sijainti pair: rivi, sarake
-    if(DE) std::cout << "Uusi ruutu [voisi olla]: (" << uusi.first << "," << uusi.second << ")" << std::endl;
+    this->output << "Uusi ruutu voisi olla: (" << uusi.first << "," << uusi.second << ") [Liikutaan jos ruutu on vapaa!]" << std::endl;
     return uusi;
 
   }
 
-  bool Sokkelo::vaihdaRuutu(const sijainti_t& sijainti, const char uusi) {
+  inline bool Sokkelo::vaihdaRuutu(const sijainti_t& sijainti, const char uusi) {
 
     // Hae pointteri ruutuun
-    char* vanha = &( this->sokkelo.at(sijainti.first).at(sijainti.second) );
+    char* vanha = NULL;
+    this->output << "Vaihdetaan ruudun (" << sijainti.first << "," << sijainti.second << ") merkki | ";
+    try {
+      vanha = &( this->sokkelo.at(sijainti.first).at(sijainti.second) );
+      *vanha = uusi;
+    } catch(...) { throw "Poikkeus"; } 
 
-    *vanha = uusi; 
+    this->output << *vanha << " -> " << uusi << "\n";
     return true;
-
-    // Jos ep‰laillinen sijoitus
-    // Ep‰sallittuja ovat
-    // -- Sein‰n korvaaminen
-    // -- K‰ydyksi korvaaminen kun jokin muu kuin nyk. sijainti X
-    /*if(*vanha == VAPAA || (*vanha == X && uusi == SIJ) || (*vanha == SIJ && uusi == KAYTY) || (*vanha == SIJ && uusi == X)) {
-      *vanha = uusi; 
-      return true;
-
-    } else {
-      std::cout << "Laiton! " << *vanha << "-->" << uusi << std::endl;
-      //throw "Laiton merkin asetus";
-      return false;
-    }
-    */
-
-    
-
   }
 
   // Getteri stackille. Huomaa kopio (!)
@@ -305,20 +299,22 @@ namespace otecpp_sokkelo {
   }
 
   // Onko X reunalla?
-  // Huomaa, ett‰ rivien ja sarakkeiden arvo on niiden lukum‰‰r‰
+  // Huomaa, ett√§ rivien ja sarakkeiden arvo on niiden lukum√§√§r√§
   bool Sokkelo::onkoReunalla() {
     const sijainti_t NYK = this->pino().top(); // nykyinen sijaintimme
-    return (NYK.first+1 == 1 || NYK.second+1 == 1 || NYK.first+1 == this->kork || NYK.second+1 == this->lev);
+    return (NYK.first == 0 || NYK.second == 0 || NYK.first+1 == this->kork || NYK.second+1 == this->lev);
   }
 
 
   char Sokkelo::getRuudunTyyppi( const sijainti_t& sijainti ) {
 
     // rivi, sarake
-    return (char) this->sokkelo.at(sijainti.first).at(sijainti.second);
+    try {
+      return (char) this->sokkelo.at(sijainti.first).at(sijainti.second);
+    } catch(...) { throw "Poikkeus .at()"; }
   }
 
-  // On luokan Sokkelo yst‰v‰
+  // On luokan Sokkelo yst√§v√§
   /*
     Tulostaa sokkelon
     [#][ ][x]
