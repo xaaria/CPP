@@ -6,17 +6,18 @@
 #include <string>
 #include <iomanip>
 
+
+
 namespace otecpp_nhl {
 
 
-  // toiminnee positiivisilla
   int strToInt(std::string& str) {
-
     int num;
     std::istringstream(str) >> num;
     return num;
-
   }
+
+
 
 
   Date::Date(int d, int m, int y) : day_(d), month_(m), year_(y) {
@@ -36,7 +37,7 @@ namespace otecpp_nhl {
   }
 
   // varhaisempi p‰iv‰m‰‰r‰ on pienempi
-  bool Date::operator<(Date& d) {
+  bool Date::operator<(const Date& d) const {
     // jos pvm sama, jatka kuukauden tark.
     if( this->year() == d.year() ) {
       // jos kuukausi sama, vertaile suoraan p‰iv‰‰
@@ -62,31 +63,27 @@ namespace otecpp_nhl {
 
   // Player
 
-  Player::Player(int id, int team_id, std::string name, char pos, std::string country, Date birthday) 
-  : id_(id), team_id_(team_id), name_(name), pos_(pos), country_(country), bday(birthday) {
+  Player::Player(int id, int team_id, std::string name, char pos, std::string country, Date birthday)  // team...
+  : id_(id), team_id_(team_id), name_(name), pos_(pos), country_(country), bday(birthday) { //team(t) {
 
   }
 
   int Player::id() const { return this->id_; }
-
   int Player::team_id() const { return this->team_id_; }
-
   const std::string& Player::name() const { return this->name_; }
-
   char Player::position() const { return this->pos_; }
-
-  const std::string& Player::country() const { 
-    return this->country_; 
-  }
-
+  const std::string& Player::country() const { return this->country_; }
   const Date& Player::birthDate() const  { return this->bday; }
 
-  // TODO: Syntym‰p‰iv‰
-  bool Player::operator<(Player& p) {
+  bool Player::operator<(const Player& p) const {
 
     if(this->name() == p.name()) {
       // Same, by ID
-      return this->id() < p.id();
+      if(this->birthDate() == p.birthDate()) {
+        return this->id() < p.id();
+      } else {
+        return this->birthDate() < p.birthDate();
+      }
     }
     else {
       return this->name() < p.name();
@@ -98,37 +95,35 @@ namespace otecpp_nhl {
   // "nimi; joukkue; syntym‰maa; syntym‰aika"
   // TODO: hae tiimin nimi kun ID tiedet‰‰n!
   std::ostream& operator<<(std::ostream& stream, const Player& p) {
-    stream << p.name() << "; " << "TEAM NAME; " << p.country() << "; " << p.birthDate();
+    // Haetaan tiimi
+    // Nimen haku p.team.name()
+    stream << p.name() << "; " << "<TIIMIN NIMI>" << ";" << p.country() << "; " << p.birthDate();
     return stream;
   }
 
+  /**
+   * Ovatko kaski Datea samat?
+  */
+  bool Date::operator==(const Date& d) const {
+    return this->day_ == d.day() 
+    && this->month_ == d.month() 
+    && this->year_ == d.year();
+  }
 
 
 
-
-  Stat::Stat(int player_id, int assists,  int goals, int games, int pm) : player_id_(player_id), assists_(assists),  goals_(goals), games_(games), plus_minus_(pm) {
-
+  Stat::Stat(int player_id, int assists, int goals, int games, int pm) : player_id_(player_id), assists_(assists), goals_(goals), games_(games), plus_minus_(pm) {
   }
 
   int Stat::player_id() const { return this->player_id_; }
-
   int Stat::assists() const { return this->assists_; }
-
-  int Stat::games() const {
-    return this->games_;
-  }
-
   int Stat::goals() const { return this->goals_; }
-
-  int Stat::plus_minus() const {
-    return this->plus_minus_;
-  }
-
-  int Stat::points() const {
-    return this->goals_ + this->assists_;
-  } 
+  int Stat::games() const { return this->games_; }
+  int Stat::plus_minus() const { return this->plus_minus_; }
+  int Stat::points() const { return this->goals_ + this->assists_; } 
 
   double Stat::ppg() const {
+    if(this->games() == 0) { return 0.0; }
     return this->points() / this->games();
   }
 
@@ -136,11 +131,8 @@ namespace otecpp_nhl {
 
   // TODO:
   std::ostream& operator<<(std::ostream& virta, const Stat& s) {
-    
     std::setprecision(2); // tulostaa kaikki intitkin?
-
-    virta << s.goals()+s.assists() << " points, " << s.goals() << " goals" << s.assists() << "assists, " << s.ppg() << "points per game, plus/minus: " << s.plus_minus();
-
+    virta << s.points() << " points, " << s.goals() << " goals, " << s.assists() << " assists, " << s.ppg() << " points per game, plus/minus: " << s.plus_minus();
     return virta;
   }
 
@@ -169,29 +161,28 @@ namespace otecpp_nhl {
    */ 
   std::vector<Stat> Stats::statsBy(std::string order) const {
 
-    /*if(order == "points") {
-      
+    // Ota kopio, jota kopeloidaan ja palautetaan
+    std::vector<Stat> sCopy = this->stats_;
 
-      std::sort( this->stats_.begin(), this->stats_.end(), cmpPlayerPoints);
+    if(order == "points") {
+      std::sort( sCopy.begin(), sCopy.end(), cmpPlayerPoints);
     }
     else if(order=="goals") {
-      // 
-      std::sort(this->stats_.begin(), this->stats_.end(), cmpPlayerGoals);
+      std::sort(sCopy.begin(), sCopy.end(), cmpPlayerGoals);
     }
     else if(order=="assists") {
-      // 
-      std::sort( this->stats_.begin(), this->stats_.end(), cmpPlayerAssists);
+      std::sort( sCopy.begin(), sCopy.end(), cmpPlayerAssists);
     }
     else if(order=="points_per_game") {
-      std::sort( this->stats_.begin(), this->stats_.end(), cmpPlayerPointsPerGame);
+      std::sort( sCopy.begin(), sCopy.end(), cmpPlayerPointsPerGame);
     }
     else {
       // Muutoin ID:n mukaan
-      std::sort( this->stats_.begin(), this->stats_.end(), cmpPlayerId);
+      std::sort( sCopy.begin(), sCopy.end(), cmpPlayerId);
     }
-    */
 
-    return this->stats_;
+
+    return sCopy; //this->stats_;
 
   }
 
@@ -202,27 +193,25 @@ namespace otecpp_nhl {
 
   // -- TEAM --
 
-  Team::Team(int id, std::string abbr, std::string name) : id_(id), abbreviation_(abbr), name_(name) {
-  } 
+  Team::Team(int id, std::string abbr, std::string name) : id_(id), abbreviation_(abbr), name_(name) {} 
 
-  int Team::id() const { this->id_; }
-
+  int Team::id() const { return this->id_; }
   const std::string& Team::abbreviation() const { return this->abbreviation_; }
-
   const std::string& Team::name() const { return this->name_; }
-
   // Luettelee pelaajat nimien kasvavan aakkosj‰rjestyksen mukaisessa j‰rjestyksess‰
   const std::vector<Player>& Team::players() const { 
-    
-    //std::sort( this->players_.begin(), this->players_.end() );  // k‰ytt‰‰ vertainta <
     return this->players_;
+  }
 
+
+  void Team::add_player(const Player& p) {
+    this->players_.push_back(p);
   }
 
   /**
    * vertailee joukkueita nimen perusteella. Jos nimet olisivat samat, verrataan toissijaisesti id-numeroita.
    */
-  bool Team::operator<(Team& team) {
+  bool Team::operator<(const Team& team) const {
 
     if(this->name() != team.name()) {
       return this->name() < team.name();
@@ -230,11 +219,10 @@ namespace otecpp_nhl {
     else {
       return this->id() < team.id();
     }
-
   }
 
   std::ostream& operator<<(std::ostream& stream, const Team& t) {
-    stream << t.name() << "(" << t.abbreviation() << ")";
+    stream << t.name() << " (" << t.abbreviation() << ")";
     return stream;
   }
 
@@ -254,8 +242,13 @@ namespace otecpp_nhl {
 
 
     // Luo kutakin tiedoston rivi‰ vastaavat oliot for-loopeissa ja tallenna
-    for (size_t t_i=0; t_i < teamData.size(); t_i++) {
+    for (size_t t_i=0; t_i < teamData.size(); ++t_i) {
       
+      /*std::cout << "Tiimi: " << strToInt(teamData.at(t_i).at(0)) <<
+        teamData.at(t_i).at(1) <<
+          teamData.at(t_i).at(2) << std::endl;
+      */
+
       // Luo tiimi-olio
       Team tiimi( 
         strToInt(teamData.at(t_i).at(0)),
@@ -265,29 +258,63 @@ namespace otecpp_nhl {
 
       this->teams_.push_back( tiimi );
 
+      // DEBUG
+      std::cout << tiimi << std::endl;
+
     }
 
+    std::cout << "-- Tiimit luettu " << std::endl;
 
     // Sama Playereille
-    for (size_t p_i=0; p_i < teamData.size(); ++p_i) {
+    for (size_t p_i=0; p_i < playerData.size(); ++p_i) {
       
+      // DEBUG
+      std::cout << "bday: '" <<  playerData.at(p_i).at(5) << "'\n";
+
+      int team_id = strToInt( playerData.at(p_i).at(1) );
+      
+      //std::cout << "Kuuluu tiimiin: " << this->get_team( team_id ) << std::endl;
+      
+
+      // Anna pelaajalle tiimi-viite. L‰hinn‰ siksi ett‰ voidaan hakea nimi tulostukseen
+      //Team& team = this->get_team( team_id );
+
       // Luo pelaaja-olio
       Player pelaaja( 
         strToInt( playerData.at(p_i).at(0) ), // id
-        strToInt( playerData.at(p_i).at(1) ), // team id
+        team_id, // team id
         playerData.at(p_i).at(2),               // name
         playerData.at(p_i).at(3).c_str()[0], // pos
         playerData.at(p_i).at(4), // counrty
-        Date(1,1,1970)  //playerData.at(p_i).at(5) // b.day , TODO:  PARSI BDAY 
+        dateFromString( playerData.at(p_i).at(5) )
       );
 
+      // Lis‰‰ pelaaja Leaguen tiimien pelaajalistaan
+      this->get_team( team_id ).add_player( pelaaja );
+      // lis‰‰ pelaaja Liigaan
       this->players_.push_back( pelaaja );
 
+    
+      // DEBUG
+      std::cout << pelaaja << std::endl;
+
     }
+
+    std::cout << "-- Pelaajat luettu " << std::endl;
 
 
     // Ja sama statseille
     for (size_t s_i=0; s_i < statsData.size(); ++s_i) {
+
+      // DEBUG
+      std::cout << s_i << "::" 
+      << strToInt( statsData.at(s_i).at(0) )
+      << "," << strToInt( statsData.at(s_i).at(1) )
+      << "," << strToInt( statsData.at(s_i).at(2) )
+      << "," << strToInt( statsData.at(s_i).at(3) )
+      << "," << strToInt( statsData.at(s_i).at(4) ) << std::endl;
+      
+
 
       // Yksitt‰inen Stat-olio
       Stat statsi(
@@ -298,17 +325,26 @@ namespace otecpp_nhl {
         strToInt( statsData.at(s_i).at(4) ) // +-
       );
 
+      // DEBUG
+      //std::cout << statsi << std::endl; // !
+
       this->stats_.push( statsi );
 
     }
+    
+    // Sorttaa viel‰: 
+    std::sort( this->players_.begin(), this->players_.end() );
 
+    std::cout << "Konstruktori valmis! Data luettu\n\n";
 
   }
 
 
-
+  // Luettelee joukkueet joukkueiden lyhenteiden kasvavan aakkosj‰rjestyksen mukaisessa j‰rjestyksess‰.
   const std::vector<Team>& League::teams() const {
-    //std::sort( this->teams_.begin(), this->teams_.end(), cmpTeamsAbbr );
+
+    //std::vector<Team> tCopy = this->teams_; 
+    //std::sort( tCopy.begin(), tCopy.end(), cmpTeamsAbbr );
     return this->teams_;
   }
 
@@ -317,17 +353,28 @@ namespace otecpp_nhl {
   }
 
   const Stats& League::stats() const {
-    this->stats_;
+    return this->stats_;
   }
 
 
+  Team& League::get_team(int id_) {
 
+    for(unsigned i = 0; i < this->teams_.size(); ++i) {
+      if( this->teams_[i].id() == id_ ) {
+        return this->teams_.at(i);
+      }
+    }
+    // Mit‰ jos ei lˆydyk‰‰n?
+    return this->teams_.at(0);
+
+
+  }
 
 
     // Apumetodi joka lukee erotinmerkill‰ erotetut asiat vektoriin
   std::vector<std::string> split(const std::string erotin,  std::string rivi) {
 
-    int position = 0;
+    unsigned int position = 0;
     std::string found = "";
     std::vector<std::string> tulos;
 
@@ -344,6 +391,21 @@ namespace otecpp_nhl {
   }
 
 
+  Date dateFromString(std::string& str) {
+    std::vector<std::string> v = split("-", str);
+    std::cout << v.size();
+    std::cout << v.at(2);
+
+
+    return Date(
+      strToInt(v.at(2)), 
+      strToInt(v.at(1)), 
+      strToInt(v.at(0))
+    );
+  }
+
+
+
   /**
    * Lukee tiedoston jonka tied.nimen saa param.
    * Palauttaa kunkin rivin vektorina, tulos on siis 2d-vektori, jossa
@@ -356,7 +418,7 @@ namespace otecpp_nhl {
     std::string rivi; // lue rivi t‰nne
 
     if(ifs) {
-      while( getline(ifs, rivi, '\n') ) {
+      while( getline(ifs, rivi) ) {
         tulos.push_back( split(";", rivi) );
       }
     }
@@ -378,30 +440,31 @@ namespace otecpp_nhl {
     return s1.player_id() < s2.player_id();
   }
 
-  bool cmpPlayerPoints(const Stat& s1, const Stat& s2) { 
+  // Laskeva. suurin ensin
+  bool cmpPlayerPoints(const Stat& p1, const Stat& p2) { 
 
-    int p1_p = s1.goals() + s1.assists();
-    int p2_p = s2.goals() + s2.assists();
 
-    if( p1_p == p2_p ) { return cmpPlayerId(s1,s2); }
-    return p1_p < p2_p;
+    if( p1.points() == p2.points() ) { return cmpPlayerId(p1, p2); }
+    return p1.points() > p2.points();
   }
 
+  // Laskeva
   bool cmpPlayerGoals(const Stat& s1, const Stat& s2) { 
     if( s1.goals() == s2.goals() ) { 
        return cmpPlayerId(s1,s2);
     }
-    return s1.goals() < s2.goals();
+    return s1.goals() > s2.goals();
   }
 
+  // Laskeva
   bool cmpPlayerAssists(const Stat& s1, const Stat& s2) { 
     if(  s1.assists() == s2.assists()) {
       return  cmpPlayerId(s1,s2);
     }
-    return s1.assists() < s2.assists();
+    return s1.assists() > s2.assists();
   }
 
-
+  // Laskeva
   bool cmpPlayerPointsPerGame(const Stat& s1, const Stat& s2) { 
     if(  s1.ppg() == s2.ppg() ) {
       return  cmpPlayerId(s1,s2);
