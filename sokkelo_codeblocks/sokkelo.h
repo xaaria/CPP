@@ -29,20 +29,19 @@ namespace otecpp_sokkelo {
 
       // Getteri stackille.
       stakki_t pino() const;
-      const stakki_t& pino_() const;
 
       bool askella(unsigned int x);
 
       // Lis‰‰ liikkeen pinoon ja p‰ivitt‰‰ this.sokkelon jotta piirto onnistuu, sek‰ muuttaa kulkusuunnan
       // Liikkeen oletetaan olevan oikeellinen(!)
       // -- Eli ei sein‰‰ ja k‰ym‰tˆn
-      inline void liiku(const sijainti_t& uusi_sijainti);
+      void liiku(const sijainti_t& uusi_sijainti);
 
       // Peruu viimeisimm‰n liikkeen, eli liikepinon p‰‰llimm‰isen, ja muuttaa kulkusuunnan
-      inline Suunta liikuTaaksepain();
+      Suunta liikuTaaksepain();
       
 
-      inline bool onkoReunalla();
+      bool onkoReunalla();
 
       // Yst‰v‰m‰‰ritys:
       // eli ett‰ ulkopuolisella vast. funk. on p‰‰sy param. yksityisiin j‰seniin
@@ -68,13 +67,13 @@ namespace otecpp_sokkelo {
       // Palauttavat sijainti-parin nyk. haluttuun suuntaan nyk. sijainnista
       // Saa parametriksi sen suunnan mihin ollaan yritt‰m‰ss‰
       // Saatu sijainti_t EI OLE automaattisesti kelpaava, vaan laskennallinen ehdotus
-      inline sijainti_t getUusiSijainti(const Yritys yritys);
+      sijainti_t getUusiSijainti(const Yritys yritys);
 
       // Palauttaa paikan <rivi, sarake> merkin charina
-      inline char getRuudunTyyppi( const sijainti_t& sijainti );
+      char getRuudunTyyppi( const sijainti_t& sijainti );
 
       // Vaihtaa sijainnin merkin. Boolean sijoituksen laillisuudesta.
-      inline bool vaihdaRuutu(const sijainti_t& sijainti, const char uusi);
+      bool vaihdaRuutu(const sijainti_t& sijainti, const char uusi);
 
   };
 

@@ -12,6 +12,11 @@ namespace otecpp_vektori  {
 
   /* toteutus samassa tiedostossa */
 
+  /*
+    stream s;
+    stream s = stream();
+  */
+
   // size_t koko on tÃ¤ssÃ¤ ERIKOISTAMINEN (specialization), eli
   // tÃ¤tÃ¤ geneeristÃ¤ luokkaa kÃ¤ytetÃ¤Ã¤n silloin kun alustus Vektori<...> 
   // on muotoa T ja size_t
@@ -24,7 +29,7 @@ namespace otecpp_vektori  {
 
     public:
 
-      const size_t n; // = koko; // eli n = <koko>
+      static const size_t n = koko; // eli n = <koko>
 
       Vektori() {
         this->arvot = new T[koko];
